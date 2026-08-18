@@ -1,6 +1,6 @@
-# ACME Interior Studio
+# Interior Studio
 
-A fully client-side interior design studio for **ACME Interior**: manage one project per customer, bring in their 2D floor plan, generate an editable 3D design for every room, customize furniture piece by piece, and export a branded PDF presentation once the design is approved.
+A fully client-side interior design studio for **Interior**: manage one project per customer, bring in their 2D floor plan, generate an editable 3D design for every room, customize furniture piece by piece, and export a branded PDF presentation once the design is approved.
 
 ## Features
 
@@ -14,7 +14,7 @@ A fully client-side interior design studio for **ACME Interior**: manage one pro
   - add items from a 30+ piece catalog (sofas, beds, wardrobes, TV units, kitchen counters, sanitary ware, decor…)
 - **3D overview** — dollhouse view of the whole apartment with adjustable wall cutaway and room labels.
 - **Approval workflow** — mark rooms approved; progress is shown per project.
-- **Branded PDF export** — ACME Interior cover page, 2D plan, full-apartment 3D render, one page per room with the 3D view, finish swatches, and a furniture schedule with sizes. Unapproved rooms are watermarked DRAFT.
+- **Branded PDF export** — Interior cover page, 2D plan, full-apartment 3D render, one page per room with the 3D view, finish swatches, and a furniture schedule with sizes. Unapproved rooms are watermarked DRAFT.
 
 ## Tech stack
 
