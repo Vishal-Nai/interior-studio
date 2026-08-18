@@ -39,7 +39,9 @@ Click **Load Sample Flat 104** on the dashboard to explore a ready-made 3BHK pro
 
 ## Deployment (GitHub Pages)
 
-Every push to `main` triggers `.github/workflows/deploy.yml`, which lints, builds, and deploys `dist/` to GitHub Pages. The live preview is served at `https://<owner>.github.io/<repo>/`. The workflow enables Pages automatically on first run; if the deploy job fails with a permissions message, check that **Settings → Pages → Source** is set to *GitHub Actions*.
+Every push to `main` triggers `.github/workflows/deploy.yml`, which lints, builds, and deploys `dist/` to GitHub Pages. The live preview is served at `https://<owner>.github.io/<repo>/`.
+
+One-time setup: in the repository go to **Settings → Pages** and set **Build and deployment → Source** to **GitHub Actions**. After that, every push to `main` deploys automatically.
 
 ## Project structure
 
