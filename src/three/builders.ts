@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { FurnitureItem, Room, FloorStyle } from '../types';
+import type { FurnitureItem, Room, FloorStyle, Opening, WallSide } from '../types';
 import { shade } from '../utils/color';
 
 /**
@@ -66,7 +66,12 @@ function sphere(g: THREE.Group, radius: number, color: string, o: PartOpts = {})
   return m;
 }
 
-type Builder = (g: THREE.Group, w: number, d: number, h: number, c: string, a: string) => void;
+interface BuildCtx {
+  /** True when the item is raised off the floor (wall-mounted / hung). */
+  elevated: boolean;
+}
+
+type Builder = (g: THREE.Group, w: number, d: number, h: number, c: string, a: string, ctx: BuildCtx) => void;
 
 const builders: Record<string, Builder> = {
   sofa3: buildSofa,
@@ -182,12 +187,29 @@ const builders: Record<string, Builder> = {
     for (let i = 0; i <= shelves; i++) box(g, w, 0.08, d, a, { y: 0.05 + (h - 0.1) * (i / shelves) });
   },
 
-  tv(g, w, d, h, c, a) {
-    const screenH = h * 0.62;
+  tv(g, w, d, h, c, a, ctx) {
+    // Wall-mounted (elevated): the whole height is screen. On a stand: screen on a pole.
+    const screenH = ctx.elevated ? h : h * 0.62;
     box(g, w, screenH, 0.1, c, { y: h - screenH / 2, roughness: 0.25, metalness: 0.4 });
     box(g, w * 0.94, screenH * 0.88, 0.06, '#101418', { y: h - screenH / 2, z: 0.06, roughness: 0.1, metalness: 0.55 });
-    cyl(g, 0.06, h - screenH, a, { y: (h - screenH) / 2 });
-    box(g, w * 0.4, 0.06, d, a, { y: 0.03 });
+    if (!ctx.elevated) {
+      cyl(g, 0.06, h - screenH, a, { y: (h - screenH) / 2 });
+      box(g, w * 0.4, 0.06, d, a, { y: 0.03 });
+    }
+  },
+
+  pendantLight(g, w, d, h, c, a) {
+    const shadeR = Math.min(w, d) * 0.45;
+    cyl(g, 0.025, h * 0.55, '#3a3a3c', { y: h * 0.725, metalness: 0.6, roughness: 0.3 });
+    const lampShade = cyl(g, shadeR, h * 0.4, c, { y: h * 0.25, roughness: 0.55 });
+    lampShade.material = new THREE.MeshStandardMaterial({ color: c, roughness: 0.55, metalness: 0.15 });
+    const bulb = sphere(g, shadeR * 0.4, a, { y: h * 0.12 });
+    bulb.material = new THREE.MeshStandardMaterial({
+      color: a,
+      emissive: new THREE.Color('#ffe6b0'),
+      emissiveIntensity: 1.4,
+      roughness: 0.4,
+    });
   },
 
   fridge(g, w, d, h, c, a) {
@@ -285,12 +307,11 @@ const builders: Record<string, Builder> = {
   },
 
   wallArt(g, w, d, h, c, a) {
-    const el = 3.6; // hung at eye level
     const dd = Math.max(d, 0.1);
-    box(g, w, h, dd, c, { y: el + h / 2, roughness: 0.5 });
-    box(g, w * 0.86, h * 0.84, dd + 0.02, a, { y: el + h / 2, roughness: 0.9 });
-    box(g, w * 0.4, h * 0.35, dd + 0.04, shade(c, -0.2), { x: -w * 0.12, y: el + h * 0.55, roughness: 0.9 });
-    cyl(g, w * 0.12, dd + 0.05, shade(a, -0.25), { x: w * 0.2, y: el + h * 0.4, rx: Math.PI / 2 });
+    box(g, w, h, dd, c, { y: h / 2, roughness: 0.5 });
+    box(g, w * 0.86, h * 0.84, dd + 0.02, a, { y: h / 2, roughness: 0.9 });
+    box(g, w * 0.4, h * 0.35, dd + 0.04, shade(c, -0.2), { x: -w * 0.12, y: h * 0.55, roughness: 0.9 });
+    cyl(g, w * 0.12, dd + 0.05, shade(a, -0.25), { x: w * 0.2, y: h * 0.4, rx: Math.PI / 2 });
   },
 
   curtainPanel(g, w, d, h, c, a) {
@@ -305,25 +326,35 @@ const builders: Record<string, Builder> = {
 };
 
 function buildSofa(g: THREE.Group, w: number, d: number, h: number, c: string, a: string) {
-  const seatH = h * 0.42;
+  const legH = Math.min(0.35, h * 0.12);
+  const body = new THREE.Group();
+  body.position.y = legH;
+  g.add(body);
+  const bh = h - legH;
+
+  const seatH = bh * 0.42;
   const armW = Math.min(0.55, w * 0.12);
   const backD = d * 0.25;
   // base
-  box(g, w, seatH * 0.6, d, shade(c, -0.08), { y: seatH * 0.3 });
+  box(body, w, seatH * 0.6, d, shade(c, -0.08), { y: seatH * 0.3 });
   // backrest
-  box(g, w, h - seatH * 0.3, backD, c, { y: (h + seatH * 0.3) / 2 - seatH * 0.15, z: -d / 2 + backD / 2 });
+  box(body, w, bh - seatH * 0.3, backD, c, { y: (bh + seatH * 0.3) / 2 - seatH * 0.15, z: -d / 2 + backD / 2 });
   // arms
   for (const sx of [-1, 1])
-    box(g, armW, h * 0.72, d, c, { x: sx * (w / 2 - armW / 2), y: h * 0.36 });
+    box(body, armW, bh * 0.72, d, c, { x: sx * (w / 2 - armW / 2), y: bh * 0.36 });
   // seat + back cushions
   const innerW = w - armW * 2;
   const seats = Math.max(1, Math.round(innerW / 2.2));
   const cw = innerW / seats - 0.06;
   for (let i = 0; i < seats; i++) {
     const cx = -innerW / 2 + (innerW / seats) * (i + 0.5);
-    box(g, cw, seatH * 0.45, d - backD - 0.15, shade(c, 0.07), { x: cx, y: seatH * 0.6 + seatH * 0.22, z: backD / 2 + 0.02, roughness: 0.95 });
-    box(g, cw, h * 0.42, 0.45, shade(a, 0.05), { x: cx, y: seatH + h * 0.24, z: -d / 2 + backD + 0.2, roughness: 0.95 });
+    box(body, cw, seatH * 0.45, d - backD - 0.15, shade(c, 0.07), { x: cx, y: seatH * 0.6 + seatH * 0.22, z: backD / 2 + 0.02, roughness: 0.95 });
+    box(body, cw, bh * 0.42, 0.45, shade(a, 0.05), { x: cx, y: seatH + bh * 0.24, z: -d / 2 + backD + 0.2, roughness: 0.95 });
   }
+  // tapered wooden legs
+  for (const sx of [-1, 1])
+    for (const sz of [-1, 1])
+      cyl(g, 0.07, legH, '#5c452f', { x: sx * (w / 2 - 0.3), y: legH / 2, z: sz * (d / 2 - 0.25) });
 }
 
 function buildBed(g: THREE.Group, w: number, d: number, h: number, c: string, a: string) {
@@ -354,12 +385,16 @@ function buildCounter(g: THREE.Group, w: number, d: number, h: number, c: string
     box(g, 0.5, 0.05, 0.06, shade(c, -0.3), { x: -w / 2 + (w / doors) * (i + 0.5), y: h - 0.5, z: d / 2 + 0.03 });
 }
 
-/** Build a furniture item as a THREE.Group. Origin: floor level, center of footprint. */
+/**
+ * Build a furniture item as a THREE.Group. Origin: item base (floor level for
+ * elevation 0), center of footprint. Callers apply position/rotation/elevation.
+ */
 export function buildFurniture(item: FurnitureItem): THREE.Group {
   const g = new THREE.Group();
   const builder = builders[item.catalogId];
+  const ctx: BuildCtx = { elevated: (item.elevation ?? 0) > 0.5 };
   if (builder) {
-    builder(g, item.w, item.d, item.h, item.color, item.accent);
+    builder(g, item.w, item.d, item.h, item.color, item.accent, ctx);
   } else {
     box(g, item.w, item.h, item.d, item.color, { y: item.h / 2 });
   }
@@ -460,15 +495,69 @@ export interface RoomShellOptions {
   noWalls?: boolean;
 }
 
+interface SolidSpan {
+  start: number;
+  end: number;
+  y0: number;
+  y1: number;
+}
+
 /**
- * Build a room shell centered at origin: floor slab plus 4 walls.
- * Wall meshes carry userData.outNormal so viewers can hide camera-facing walls.
+ * Split a wall of the given length into solid spans around its openings.
+ * Doors leave a lintel above; windows leave wall below the sill and above.
+ */
+function wallSpans(len: number, wallH: number, openings: Opening[]): SolidSpan[] {
+  const spans: SolidSpan[] = [];
+  const sorted = [...openings]
+    .map((o) => {
+      const half = Math.min(o.width, len - 0.6) / 2;
+      const c = Math.min(Math.max(o.offset, half + 0.2), len - half - 0.2);
+      return { ...o, start: c - half, end: c + half };
+    })
+    .sort((a, b) => a.start - b.start);
+
+  let cursor = 0;
+  for (const o of sorted) {
+    if (o.start > cursor + 0.02) spans.push({ start: cursor, end: o.start, y0: 0, y1: wallH });
+    if (o.kind === 'door') {
+      if (o.height < wallH - 0.05) spans.push({ start: o.start, end: o.end, y0: o.height, y1: wallH });
+    } else {
+      const sill = Math.min(o.sill, wallH - 0.4);
+      const top = Math.min(sill + o.height, wallH);
+      if (sill > 0.05) spans.push({ start: o.start, end: o.end, y0: 0, y1: sill });
+      if (top < wallH - 0.05) spans.push({ start: o.start, end: o.end, y0: top, y1: wallH });
+    }
+    cursor = Math.max(cursor, o.end);
+  }
+  if (cursor < len - 0.02) spans.push({ start: cursor, end: len, y0: 0, y1: wallH });
+  return spans;
+}
+
+interface WallDef {
+  side: WallSide;
+  len: number;
+  /** Convert a coordinate along the wall + across offset into room-local x/z. */
+  place: (mesh: THREE.Object3D, along: number, y: number, across: number) => void;
+  /** Box size for a segment of the wall. */
+  size: (spanLen: number, h: number, thickness: number) => [number, number, number];
+  outNormal: THREE.Vector3;
+  /** Sign pointing into the room, along the wall's across-axis. */
+  inward: number;
+}
+
+/**
+ * Build a room shell centered at origin: floor slab plus 4 walls with door
+ * and window openings, frames, glass, door leaves and baseboards.
+ * Wall groups carry userData.outNormal so viewers can hide camera-facing walls.
  */
 export function buildRoomShell(room: Room, opts: RoomShellOptions = {}): THREE.Group {
   const g = new THREE.Group();
   const { width: w, depth: d } = room;
-  const wallH = opts.wallHeight ?? room.wallHeight;
+  // Balconies get open parapet walls instead of full-height walls.
+  const fullH = room.type === 'balcony' ? Math.min(3.2, room.wallHeight) : room.wallHeight;
+  const wallH = Math.min(opts.wallHeight ?? fullH, fullH);
   const t = WALL_THICKNESS;
+  const trim = room.trimColor;
 
   const floorTex = makeFloorTexture(room.floorStyle, room.floorColor);
   const floorMat = new THREE.MeshStandardMaterial({
@@ -488,27 +577,164 @@ export function buildRoomShell(room: Room, opts: RoomShellOptions = {}): THREE.G
   floor.userData.isFloor = true;
   g.add(floor);
 
-  if (!opts.noWalls) {
-    const wallMat = new THREE.MeshStandardMaterial({ color: room.wallColor, roughness: 0.92 });
-    const topMat = new THREE.MeshStandardMaterial({ color: shade(room.wallColor, -0.25), roughness: 0.92 });
-    const defs: Array<{ w: number; d: number; x: number; z: number; n: [number, number] }> = [
-      { w: w + t * 2, d: t, x: 0, z: -d / 2 - t / 2, n: [0, -1] },
-      { w: w + t * 2, d: t, x: 0, z: d / 2 + t / 2, n: [0, 1] },
-      { w: t, d, x: -w / 2 - t / 2, z: 0, n: [-1, 0] },
-      { w: t, d, x: w / 2 + t / 2, z: 0, n: [1, 0] },
-    ];
-    for (const def of defs) {
-      const wall = new THREE.Mesh(
-        new THREE.BoxGeometry(def.w, wallH, def.d),
-        [wallMat, wallMat, topMat, wallMat, wallMat, wallMat],
-      );
-      wall.position.set(def.x, wallH / 2, def.z);
-      wall.castShadow = true;
-      wall.receiveShadow = true;
-      wall.userData.outNormal = new THREE.Vector3(def.n[0], 0, def.n[1]);
-      wall.userData.isWall = true;
-      g.add(wall);
+  if (opts.noWalls) return g;
+
+  const wallMat = new THREE.MeshStandardMaterial({ color: room.wallColor, roughness: 0.92 });
+  const trimMat = new THREE.MeshStandardMaterial({ color: trim, roughness: 0.6 });
+  const glassMat = new THREE.MeshStandardMaterial({
+    color: '#b7d4de',
+    roughness: 0.08,
+    metalness: 0.1,
+    transparent: true,
+    opacity: 0.32,
+  });
+  const doorMat = new THREE.MeshStandardMaterial({ color: '#8a6c4e', roughness: 0.65 });
+
+  // N/S walls extend past the corners by the wall thickness so corners are closed.
+  const defs: WallDef[] = [
+    {
+      side: 'N',
+      len: w,
+      outNormal: new THREE.Vector3(0, 0, -1),
+      inward: 1,
+      place: (m, along, y, across) => m.position.set(along - w / 2, y, -d / 2 - t / 2 + across),
+      size: (s, h, th) => [s, h, th],
+    },
+    {
+      side: 'S',
+      len: w,
+      outNormal: new THREE.Vector3(0, 0, 1),
+      inward: -1,
+      place: (m, along, y, across) => m.position.set(along - w / 2, y, d / 2 + t / 2 + across),
+      size: (s, h, th) => [s, h, th],
+    },
+    {
+      side: 'W',
+      len: d,
+      outNormal: new THREE.Vector3(-1, 0, 0),
+      inward: 1,
+      place: (m, along, y, across) => m.position.set(-w / 2 - t / 2 + across, y, along - d / 2),
+      size: (s, h, th) => [th, h, s],
+    },
+    {
+      side: 'E',
+      len: d,
+      outNormal: new THREE.Vector3(1, 0, 0),
+      inward: -1,
+      place: (m, along, y, across) => m.position.set(w / 2 + t / 2 + across, y, along - d / 2),
+      size: (s, h, th) => [th, h, s],
+    },
+  ];
+
+  for (const def of defs) {
+    const wallGroup = new THREE.Group();
+    wallGroup.userData.outNormal = def.outNormal;
+    wallGroup.userData.isWall = true;
+
+    const openings = room.openings.filter((o) => o.wall === def.side && o.width < def.len);
+    const spans = wallSpans(def.len, wallH, openings);
+
+    for (const span of spans) {
+      const spanLen = span.end - span.start;
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(...def.size(spanLen, span.y1 - span.y0, t)), wallMat);
+      def.place(mesh, (span.start + span.end) / 2, (span.y0 + span.y1) / 2, 0);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      wallGroup.add(mesh);
+
+      // Baseboard on the interior face of floor-touching spans.
+      if (span.y0 === 0 && span.y1 > 0.5) {
+        const bb = new THREE.Mesh(new THREE.BoxGeometry(...def.size(spanLen, 0.35, 0.08)), trimMat);
+        def.place(bb, (span.start + span.end) / 2, 0.175, def.inward * (t / 2 + 0.04));
+        bb.receiveShadow = true;
+        wallGroup.add(bb);
+      }
     }
+
+    // Corner extensions for N/S walls to close the wall ring.
+    if (def.side === 'N' || def.side === 'S') {
+      for (const along of [-t / 2, def.len + t / 2]) {
+        const corner = new THREE.Mesh(new THREE.BoxGeometry(t, wallH, t), wallMat);
+        def.place(corner, along, wallH / 2, 0);
+        corner.castShadow = true;
+        corner.receiveShadow = true;
+        wallGroup.add(corner);
+      }
+    }
+
+    // Frames, glass and door leaves.
+    for (const o of openings) {
+      const half = Math.min(o.width, def.len - 0.6) / 2;
+      const c = Math.min(Math.max(o.offset, half + 0.2), def.len - half - 0.2);
+      const ow = half * 2;
+
+      if (o.kind === 'door') {
+        const doorH = Math.min(o.height, wallH - 0.02);
+        if (doorH < 1) continue;
+        // jambs
+        for (const s of [-1, 1]) {
+          const jamb = new THREE.Mesh(new THREE.BoxGeometry(...def.size(0.16, doorH, t + 0.12)), trimMat);
+          def.place(jamb, c + s * (half - 0.08), doorH / 2, 0);
+          jamb.castShadow = true;
+          wallGroup.add(jamb);
+        }
+        // header
+        if (o.height < wallH - 0.05) {
+          const head = new THREE.Mesh(new THREE.BoxGeometry(...def.size(ow, 0.16, t + 0.12)), trimMat);
+          def.place(head, c, doorH + 0.08, 0);
+          wallGroup.add(head);
+        }
+        // door leaf, hinged ~28 degrees open into the room
+        const leafW = ow - 0.32;
+        const leafH = doorH - 0.12;
+        const pivot = new THREE.Group();
+        def.place(pivot, c - half + 0.16, 0, def.inward * (t / 2));
+        const leaf = new THREE.Mesh(new THREE.BoxGeometry(leafW, leafH, 0.09), doorMat);
+        leaf.position.set(leafW / 2, leafH / 2, 0);
+        leaf.castShadow = true;
+        const handle = new THREE.Mesh(unitSphere, mat('#c9b98a', 0.3, 0.7));
+        handle.scale.setScalar(0.14);
+        handle.position.set(leafW - 0.25, leafH * 0.48, 0.1);
+        pivot.add(leaf, handle);
+        // Orient the pivot along the wall, then swing the leaf into the room.
+        const swing: Record<WallSide, [number, number]> = {
+          N: [0, -0.5],
+          S: [0, 0.5],
+          W: [-Math.PI / 2, 0.5],
+          E: [-Math.PI / 2, -0.5],
+        };
+        pivot.rotation.y = swing[def.side][0] + swing[def.side][1];
+        wallGroup.add(pivot);
+      } else {
+        const sill = Math.min(o.sill, wallH - 0.4);
+        const top = Math.min(sill + o.height, wallH);
+        const wh = top - sill;
+        if (wh < 0.3) continue;
+        // frame: sill board, top board, side jambs
+        const sillBoard = new THREE.Mesh(new THREE.BoxGeometry(...def.size(ow + 0.2, 0.12, t + 0.16)), trimMat);
+        def.place(sillBoard, c, sill - 0.06, 0);
+        wallGroup.add(sillBoard);
+        if (top < wallH - 0.02) {
+          const topBoard = new THREE.Mesh(new THREE.BoxGeometry(...def.size(ow, 0.12, t + 0.1)), trimMat);
+          def.place(topBoard, c, top + 0.06, 0);
+          wallGroup.add(topBoard);
+        }
+        for (const s of [-1, 1]) {
+          const jamb = new THREE.Mesh(new THREE.BoxGeometry(...def.size(0.12, wh, t + 0.1)), trimMat);
+          def.place(jamb, c + s * (half - 0.06), sill + wh / 2, 0);
+          wallGroup.add(jamb);
+        }
+        // center mullion + glass
+        const mullion = new THREE.Mesh(new THREE.BoxGeometry(...def.size(0.07, wh, t * 0.4)), trimMat);
+        def.place(mullion, c, sill + wh / 2, 0);
+        wallGroup.add(mullion);
+        const glass = new THREE.Mesh(new THREE.BoxGeometry(...def.size(ow - 0.1, wh - 0.08, 0.05)), glassMat);
+        def.place(glass, c, sill + wh / 2, 0);
+        wallGroup.add(glass);
+      }
+    }
+
+    g.add(wallGroup);
   }
   return g;
 }

@@ -1,7 +1,57 @@
-import type { FurnitureItem, Room, RoomType } from '../types';
+import type { FurnitureItem, Opening, Room, RoomType } from '../types';
 import { CATALOG_MAP } from './catalog';
 import { uid } from '../utils/id';
 import { clamp } from '../utils/units';
+
+export const DEFAULT_TRIM = '#efe9dc';
+
+/**
+ * Sensible default doors/windows per room type. Door on the front (S) wall,
+ * window on the back (N) wall, sized to the room.
+ */
+export function defaultOpenings(type: RoomType, width: number): Opening[] {
+  const openings: Opening[] = [];
+  const door = (wall: Opening['wall'], len: number): Opening => ({
+    id: uid('o_'),
+    kind: 'door',
+    wall,
+    offset: Math.min(len - 2.2, Math.max(2.2, len * 0.3)),
+    width: Math.min(3, len - 1.5),
+    height: 7,
+    sill: 0,
+  });
+  const window = (wall: Opening['wall'], len: number, w: number, h: number, sill: number): Opening => ({
+    id: uid('o_'),
+    kind: 'window',
+    wall,
+    offset: len / 2,
+    width: Math.min(w, len - 1.5),
+    height: h,
+    sill,
+  });
+
+  if (type === 'balcony') return openings; // open parapet, no door/window needed
+
+  openings.push(door('S', width));
+  switch (type) {
+    case 'bedroom':
+    case 'living':
+    case 'study':
+      openings.push(window('N', width, 5, 4.2, 2.8));
+      break;
+    case 'kitchen':
+    case 'dining':
+      openings.push(window('N', width, 4, 3, 3.5));
+      break;
+    case 'toilet':
+    case 'wash':
+      openings.push(window('N', width, 1.8, 1.5, 5.2));
+      break;
+    default:
+      break;
+  }
+  return openings;
+}
 
 /** Visual defaults per room type: wall/floor finishes. */
 export const ROOM_FINISHES: Record<RoomType, { wallColor: string; floorColor: string; floorStyle: Room['floorStyle'] }> = {
@@ -55,6 +105,7 @@ const PRESETS: Record<RoomType, Placement[]> = {
     { catalogId: 'plant', fx: 0.92, fz: 0.08, rotation: 0 },
     { catalogId: 'floorLamp', fx: 0.08, fz: 0.9, rotation: 0, minRoom: 10 },
     { catalogId: 'sideTable', fx: 0.88, fz: 0.88, rotation: 0, minRoom: 12 },
+    { catalogId: 'pendantLight', fx: 0.5, fz: 0.5, rotation: 0 },
   ],
   bedroom: [
     { catalogId: 'bedDouble', fx: 0.42, fz: 0.55, rotation: 0 },
@@ -81,6 +132,7 @@ const PRESETS: Record<RoomType, Placement[]> = {
     { catalogId: 'diningChair', fx: 0.68, fz: 0.12, rotation: 180 },
     { catalogId: 'diningChair', fx: 0.32, fz: 0.34, rotation: 0 },
     { catalogId: 'diningChair', fx: 0.68, fz: 0.34, rotation: 0 },
+    { catalogId: 'pendantLight', fx: 0.5, fz: 0.22, rotation: 0 },
   ],
   toilet: [
     { catalogId: 'wc', fx: 0.24, fz: 0.16, rotation: 0 },
@@ -124,6 +176,7 @@ export function createItem(catalogId: string, x: number, z: number, scale = 1): 
     w: entry.w * scale,
     d: entry.d * scale,
     h: entry.h * scale,
+    elevation: entry.elevation ?? 0,
     color: entry.color,
     accent: entry.accent,
   };

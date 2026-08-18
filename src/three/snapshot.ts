@@ -80,7 +80,7 @@ export function renderRoomSnapshot(room: Room, width = 1280, height = 900): stri
   for (const item of room.items) {
     if (WALL_MOUNTED.has(item.catalogId) && nearHiddenWall(item.x, item.z)) continue;
     const g = buildFurniture(item);
-    g.position.set(item.x - room.width / 2, 0, item.z - room.depth / 2);
+    g.position.set(item.x - room.width / 2, item.elevation, item.z - room.depth / 2);
     g.rotation.y = -THREE.MathUtils.degToRad(item.rotation);
     scene.add(g);
   }
@@ -129,12 +129,15 @@ export function renderOverviewSnapshot(project: Project, width = 1600, height = 
   scene.add(base);
 
   for (const room of rooms) {
-    const shell = buildRoomShell(room, { wallHeight: Math.min(room.wallHeight, 6) });
+    const cut = Math.min(room.wallHeight, 6);
+    const shell = buildRoomShell(room, { wallHeight: cut });
     shell.position.set(room.x + room.width / 2, 0, room.z + room.depth / 2);
     scene.add(shell);
     for (const item of room.items) {
+      // Skip hung items (pendants) that would float above cutaway walls.
+      if (item.elevation >= cut) continue;
       const g = buildFurniture(item);
-      g.position.set(room.x + item.x, 0, room.z + item.z);
+      g.position.set(room.x + item.x, item.elevation, room.z + item.z);
       g.rotation.y = -THREE.MathUtils.degToRad(item.rotation);
       scene.add(g);
     }

@@ -19,6 +19,8 @@ export interface CatalogEntry {
   h: number;
   color: string;
   accent: string;
+  /** Default height of the item's base above the floor (wall-mounted/hung items). */
+  elevation?: number;
 }
 
 export const CATALOG: CatalogEntry[] = [
@@ -70,8 +72,9 @@ export const CATALOG: CatalogEntry[] = [
   { id: 'rug', label: 'Rug', category: 'Decor', w: 6, d: 4, h: 0.06, color: '#b56d54', accent: '#8f5340' },
   { id: 'plant', label: 'Indoor Plant', category: 'Decor', w: 1.4, d: 1.4, h: 4, color: '#4c7a43', accent: '#8b5a3c' },
   { id: 'floorLamp', label: 'Floor Lamp', category: 'Decor', w: 1.3, d: 1.3, h: 5.2, color: '#d9c08f', accent: '#3b3b3d' },
-  { id: 'wallArt', label: 'Wall Art / Frame', category: 'Decor', w: 2.5, d: 0.15, h: 2, color: '#9a7b4f', accent: '#e7e2d6' },
+  { id: 'wallArt', label: 'Wall Art / Frame', category: 'Decor', w: 2.5, d: 0.15, h: 2, color: '#9a7b4f', accent: '#e7e2d6', elevation: 3.6 },
   { id: 'curtainPanel', label: 'Curtain Panel', category: 'Decor', w: 4, d: 0.3, h: 7.5, color: '#b9a98c', accent: '#a09173' },
+  { id: 'pendantLight', label: 'Pendant Light', category: 'Decor', w: 1.2, d: 1.2, h: 1.6, color: '#2f2f31', accent: '#f3e3bd', elevation: 6.4 },
 ];
 
 export const CATALOG_MAP: Record<string, CatalogEntry> = Object.fromEntries(

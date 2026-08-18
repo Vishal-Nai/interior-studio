@@ -1,7 +1,8 @@
 import { useStore } from '../store/useStore';
-import type { FloorStyle, Room } from '../types';
+import type { FloorStyle, Opening, Room, WallSide } from '../types';
 import { CATALOG_MAP } from '../data/catalog';
 import { round1 } from '../utils/units';
+import { uid } from '../utils/id';
 
 function NumberField({
   label,
@@ -55,6 +56,129 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
 
 const FLOOR_STYLES: FloorStyle[] = ['wood', 'tile', 'marble', 'concrete', 'plain'];
 
+const WALL_LABELS: Record<WallSide, string> = {
+  N: 'Back',
+  S: 'Front',
+  W: 'Left',
+  E: 'Right',
+};
+
+function OpeningsEditor({ projectId, room }: { projectId: string; room: Room }) {
+  const updateRoom = useStore((s) => s.updateRoom);
+  const setOpenings = (openings: Opening[]) => updateRoom(projectId, room.id, { openings });
+
+  const patchOpening = (id: string, patch: Partial<Opening>) =>
+    setOpenings(room.openings.map((o) => (o.id === id ? { ...o, ...patch } : o)));
+
+  const add = (kind: Opening['kind']) =>
+    setOpenings([
+      ...room.openings,
+      kind === 'door'
+        ? { id: uid('o_'), kind, wall: 'S', offset: room.width / 2, width: 3, height: 7, sill: 0 }
+        : { id: uid('o_'), kind, wall: 'N', offset: room.width / 2, width: 4, height: 4, sill: 2.8 },
+    ]);
+
+  return (
+    <div className="inspector-section">
+      <div className="section-heading">Doors &amp; Windows</div>
+      {room.openings.length === 0 && <p className="hint">No openings. Solid walls all around.</p>}
+      {room.openings.map((o) => {
+        const wallLen = o.wall === 'N' || o.wall === 'S' ? room.width : room.depth;
+        return (
+          <div key={o.id} className="opening-card">
+            <div className="opening-head">
+              <span className="opening-kind">{o.kind === 'door' ? 'Door' : 'Window'}</span>
+              <select
+                className="select-input compact"
+                value={o.wall}
+                onChange={(e) => patchOpening(o.id, { wall: e.target.value as WallSide })}
+              >
+                {(Object.keys(WALL_LABELS) as WallSide[]).map((wSide) => (
+                  <option key={wSide} value={wSide}>
+                    {WALL_LABELS[wSide]} wall
+                  </option>
+                ))}
+              </select>
+              <button
+                className="icon-btn"
+                title="Remove"
+                onClick={() => setOpenings(room.openings.filter((x) => x.id !== o.id))}
+              >
+                &times;
+              </button>
+            </div>
+            <div className="opening-grid">
+              <label className="mini-field">
+                <span>Position</span>
+                <input
+                  type="number"
+                  step={0.1}
+                  min={0}
+                  max={wallLen}
+                  value={round1(o.offset)}
+                  onChange={(e) => {
+                    const v = parseFloat(e.target.value);
+                    if (!Number.isNaN(v)) patchOpening(o.id, { offset: v });
+                  }}
+                />
+              </label>
+              <label className="mini-field">
+                <span>Width</span>
+                <input
+                  type="number"
+                  step={0.1}
+                  min={1}
+                  value={round1(o.width)}
+                  onChange={(e) => {
+                    const v = parseFloat(e.target.value);
+                    if (!Number.isNaN(v)) patchOpening(o.id, { width: Math.max(1, v) });
+                  }}
+                />
+              </label>
+              <label className="mini-field">
+                <span>Height</span>
+                <input
+                  type="number"
+                  step={0.1}
+                  min={1}
+                  value={round1(o.height)}
+                  onChange={(e) => {
+                    const v = parseFloat(e.target.value);
+                    if (!Number.isNaN(v)) patchOpening(o.id, { height: Math.max(1, v) });
+                  }}
+                />
+              </label>
+              {o.kind === 'window' && (
+                <label className="mini-field">
+                  <span>Sill</span>
+                  <input
+                    type="number"
+                    step={0.1}
+                    min={0}
+                    value={round1(o.sill)}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value);
+                      if (!Number.isNaN(v)) patchOpening(o.id, { sill: Math.max(0, v) });
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+          </div>
+        );
+      })}
+      <div className="btn-row">
+        <button className="btn small" onClick={() => add('door')}>
+          + Door
+        </button>
+        <button className="btn small" onClick={() => add('window')}>
+          + Window
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function Inspector({ projectId, room }: { projectId: string; room: Room }) {
   const selectedItemId = useStore((s) => s.selectedItemId);
   const updateItem = useStore((s) => s.updateItem);
@@ -91,6 +215,13 @@ export function Inspector({ projectId, room }: { projectId: string; room: Room }
             <div className="section-heading">Position</div>
             <NumberField label="X (from left wall)" value={item.x} min={0} max={room.width} onChange={(v) => patch({ x: v })} />
             <NumberField label="Z (from back wall)" value={item.z} min={0} max={room.depth} onChange={(v) => patch({ z: v })} />
+            <NumberField
+              label="Elevation (off floor)"
+              value={item.elevation}
+              min={0}
+              max={room.wallHeight}
+              onChange={(v) => patch({ elevation: Math.max(0, v) })}
+            />
             <div className="field">
               <span className="field-label">Rotation {Math.round(item.rotation)}&deg;</span>
               <input
@@ -171,6 +302,7 @@ export function Inspector({ projectId, room }: { projectId: string; room: Room }
         <div className="inspector-section">
           <div className="section-heading">Finishes</div>
           <ColorField label="Wall color" value={room.wallColor} onChange={(v) => patchRoom({ wallColor: v })} />
+          <ColorField label="Trim / frames" value={room.trimColor} onChange={(v) => patchRoom({ trimColor: v })} />
           <ColorField label="Floor color" value={room.floorColor} onChange={(v) => patchRoom({ floorColor: v })} />
           <label className="field">
             <span className="field-label">Floor style</span>
@@ -187,6 +319,8 @@ export function Inspector({ projectId, room }: { projectId: string; room: Room }
             </select>
           </label>
         </div>
+
+        <OpeningsEditor projectId={projectId} room={room} />
 
         <div className="inspector-section">
           <div className="section-heading">Notes</div>

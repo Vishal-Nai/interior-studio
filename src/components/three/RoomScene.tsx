@@ -21,7 +21,17 @@ function RoomShell({ room }: { room: Room }) {
   const shell = useMemo(
     () => buildRoomShell(room),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [room.width, room.depth, room.wallHeight, room.wallColor, room.floorColor, room.floorStyle],
+    [
+      room.width,
+      room.depth,
+      room.wallHeight,
+      room.wallColor,
+      room.trimColor,
+      room.floorColor,
+      room.floorStyle,
+      room.openings,
+      room.type,
+    ],
   );
 
   useEffect(() => () => disposeGroup(shell), [shell]);
@@ -56,7 +66,7 @@ function FurnitureObject({
   const group = useMemo(
     () => buildFurniture(item),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [item.catalogId, item.w, item.d, item.h, item.color, item.accent],
+    [item.catalogId, item.w, item.d, item.h, item.color, item.accent, item.elevation > 0.5],
   );
 
   const drag = useRef<{ offX: number; offZ: number } | null>(null);
@@ -99,7 +109,7 @@ function FurnitureObject({
 
   return (
     <group
-      position={[item.x - room.width / 2, 0, item.z - room.depth / 2]}
+      position={[item.x - room.width / 2, item.elevation, item.z - room.depth / 2]}
       rotation={[0, -rad, 0]}
     >
       <primitive
@@ -110,7 +120,7 @@ function FurnitureObject({
         onPointerCancel={endDrag}
       />
       {selected && (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04 - item.elevation, 0]}>
           <planeGeometry args={[item.w + 0.5, item.d + 0.5]} />
           <meshBasicMaterial color="#d9a95c" transparent opacity={0.4} depthWrite={false} />
         </mesh>

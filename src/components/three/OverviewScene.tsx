@@ -42,8 +42,10 @@ function ApartmentModel({ project, cutHeight, showLabels }: { project: Project; 
       shell.position.set(room.x + room.width / 2, 0, room.z + room.depth / 2);
       g.add(shell);
       for (const item of room.items) {
+        // Skip hung items (pendants) that would float above cutaway walls.
+        if (item.elevation >= cutHeight) continue;
         const f = buildFurniture(item);
-        f.position.set(room.x + item.x, 0, room.z + item.z);
+        f.position.set(room.x + item.x, item.elevation, room.z + item.z);
         f.rotation.y = -THREE.MathUtils.degToRad(item.rotation);
         g.add(f);
       }

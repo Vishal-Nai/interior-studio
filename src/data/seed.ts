@@ -1,6 +1,6 @@
 import type { Project, Room, RoomType } from '../types';
 import { uid } from '../utils/id';
-import { autoFurnish, ROOM_FINISHES } from './presets';
+import { autoFurnish, defaultOpenings, DEFAULT_TRIM, ROOM_FINISHES } from './presets';
 
 interface SeedRoom {
   name: string;
@@ -44,8 +44,10 @@ export function createSampleProject(): Project {
       depth: s.d,
       wallHeight: 9,
       wallColor: finishes.wallColor,
+      trimColor: DEFAULT_TRIM,
       floorColor: finishes.floorColor,
       floorStyle: finishes.floorStyle,
+      openings: defaultOpenings(s.type, s.w),
       items: autoFurnish(s.type, s.w, s.d),
       approved: false,
       notes: '',

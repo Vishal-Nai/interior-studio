@@ -3,7 +3,8 @@ import { persist, createJSONStorage, type StateStorage } from 'zustand/middlewar
 import { get as idbGet, set as idbSet, del as idbDel } from 'idb-keyval';
 import type { FurnitureItem, Project, Room, Route } from '../types';
 import { uid } from '../utils/id';
-import { autoFurnish, ROOM_FINISHES } from '../data/presets';
+import { autoFurnish, defaultOpenings, DEFAULT_TRIM, ROOM_FINISHES } from '../data/presets';
+import { CATALOG_MAP } from '../data/catalog';
 import { createSampleProject } from '../data/seed';
 
 const idbStorage: StateStorage = {
@@ -136,8 +137,10 @@ export const useStore = create<StoreState>()(
           depth: input.depth,
           wallHeight: 9,
           wallColor: finishes.wallColor,
+          trimColor: DEFAULT_TRIM,
           floorColor: finishes.floorColor,
           floorStyle: finishes.floorStyle,
+          openings: defaultOpenings(input.type, input.width),
           items: input.furnish ? autoFurnish(input.type, input.width, input.depth) : [],
           approved: false,
           notes: '',
@@ -264,8 +267,23 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: 'acme-interior-studio',
+      version: 2,
       storage: createJSONStorage(() => idbStorage),
       partialize: (s) => ({ projects: s.projects }),
+      migrate: (persisted) => {
+        // v2 added room.openings/trimColor and item.elevation.
+        const state = persisted as { projects?: Project[] };
+        for (const project of state.projects ?? []) {
+          for (const room of project.rooms) {
+            room.openings ??= defaultOpenings(room.type, room.width);
+            room.trimColor ??= DEFAULT_TRIM;
+            for (const item of room.items) {
+              item.elevation ??= CATALOG_MAP[item.catalogId]?.elevation ?? 0;
+            }
+          }
+        }
+        return state;
+      },
       onRehydrateStorage: () => (state) => {
         state?.setHydrated();
       },

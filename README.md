@@ -6,11 +6,13 @@ A fully client-side interior design studio for **Interior**: manage one project 
 
 - **Multi-project management** — one project per customer/plan, with duplicate/delete, approval progress, and automatic persistence in the browser (IndexedDB). No backend needed.
 - **Floor plan input** — upload the customer's 2D plan image, calibrate the scale against a known dimension, then trace rooms directly on top of it. Rooms can also be drawn on a blank grid.
-- **3D generation** — every room gets a 3D shell (walls, floor finish) and an auto-generated furniture layout based on its type (bedroom, living, kitchen/dining, toilet, balcony, store, wash, vestibule, study…).
+- **3D generation** — every room gets a 3D shell (walls with doors and windows, baseboards, floor finish) and an auto-generated furniture layout based on its type (bedroom, living, kitchen/dining, toilet, balcony, store, wash, vestibule, study…). Balconies get open parapet walls; doors render with open leaves and frames, windows with glass and sills.
 - **Per-room customization** — one room at a time:
   - drag furniture on the floor in 3D, rotate (R key or slider), duplicate, delete
   - resize any item (width/depth/height) with live parametric geometry
-  - recolor primary/accent of every piece, plus wall color, floor color and floor style (wood/tile/marble/concrete)
+  - recolor primary/accent of every piece, plus wall color, trim color, floor color and floor style (wood/tile/marble/concrete)
+  - set an item's elevation to wall-mount TVs, hang art, or position pendant lights
+  - add, move and resize doors and windows on any wall of the room
   - add items from a 30+ piece catalog (sofas, beds, wardrobes, TV units, kitchen counters, sanitary ware, decor…)
 - **3D overview** — dollhouse view of the whole apartment with adjustable wall cutaway and room labels.
 - **Approval workflow** — mark rooms approved; progress is shown per project.
@@ -34,6 +36,10 @@ npm run lint     # oxlint
 ```
 
 Click **Load Sample Flat 104** on the dashboard to explore a ready-made 3BHK project modeled after the reference floor plan.
+
+## Deployment (GitHub Pages)
+
+Every push to `main` triggers `.github/workflows/deploy.yml`, which lints, builds, and deploys `dist/` to GitHub Pages. The live preview is served at `https://<owner>.github.io/<repo>/`. The workflow enables Pages automatically on first run; if the deploy job fails with a permissions message, check that **Settings → Pages → Source** is set to *GitHub Actions*.
 
 ## Project structure
 
