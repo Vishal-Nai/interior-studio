@@ -69,7 +69,16 @@ export function renderRoomSnapshot(room: Room, width = 1280, height = 900): stri
 
   const shell = buildRoomShell(room);
   scene.add(shell);
+
+  const corner = pickCameraCorner(room);
+  // Wall-mounted decor on a hidden (cutaway) wall would float in mid-air; skip it.
+  const WALL_MOUNTED = new Set(['wallArt', 'curtainPanel']);
+  const nearHiddenWall = (x: number, z: number) =>
+    (corner.sx > 0 ? x > room.width - 1.5 : x < 1.5) ||
+    (corner.sz > 0 ? z > room.depth - 1.5 : z < 1.5);
+
   for (const item of room.items) {
+    if (WALL_MOUNTED.has(item.catalogId) && nearHiddenWall(item.x, item.z)) continue;
     const g = buildFurniture(item);
     g.position.set(item.x - room.width / 2, 0, item.z - room.depth / 2);
     g.rotation.y = -THREE.MathUtils.degToRad(item.rotation);
@@ -82,7 +91,6 @@ export function renderRoomSnapshot(room: Room, width = 1280, height = 900): stri
 
   const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 500);
   // View from the least-obstructed corner; hide the two walls facing the camera.
-  const corner = pickCameraCorner(room);
   camera.position.set(corner.sx * span * 1.05, span * 0.95, corner.sz * span * 1.25);
   camera.lookAt(center);
 
