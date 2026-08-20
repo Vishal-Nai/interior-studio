@@ -37,11 +37,17 @@ npm run lint     # oxlint
 
 Click **Load Sample Flat 104** on the dashboard to explore a ready-made 3BHK project modeled after the reference floor plan.
 
-## Deployment (GitHub Pages)
+## Deployment (Vercel)
 
-Every push to `main` triggers `.github/workflows/deploy.yml`, which lints, builds, and deploys `dist/` to GitHub Pages. The live preview is served at `https://<owner>.github.io/<repo>/`.
+The app deploys to Vercel via its Git integration (works with private repos on the free plan):
 
-One-time setup: in the repository go to **Settings → Pages** and set **Build and deployment → Source** to **GitHub Actions**. After that, every push to `main` deploys automatically.
+1. Sign in at [vercel.com](https://vercel.com) with your GitHub account.
+2. **Add New → Project**, grant Vercel access to the `interior-studio` repository, and import it.
+3. Vercel auto-detects Vite (`npm run build`, output `dist`) — `vercel.json` pins this. Click **Deploy**.
+
+After the one-time import, every push to `main` creates a production deployment at your `*.vercel.app` URL, and every push to any other branch gets its own preview URL automatically.
+
+> GitHub Pages was dropped because it requires a paid GitHub plan for private repositories.
 
 ## Project structure
 
